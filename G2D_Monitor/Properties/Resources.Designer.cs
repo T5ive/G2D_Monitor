@@ -63,9 +63,9 @@ namespace G2D_Monitor.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static byte[] GGS {
+        internal static byte[] g2d {
             get {
-                object obj = ResourceManager.GetObject("GGS", resourceCulture);
+                object obj = ResourceManager.GetObject("g2d", resourceCulture);
                 return ((byte[])(obj));
             }
         }

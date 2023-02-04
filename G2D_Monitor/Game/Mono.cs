@@ -6,10 +6,10 @@ namespace G2D_Monitor.Game
 {
     internal sealed class Mono : IDisposable
     {
-        private const int OFFSET_FUNC_STATIC_FIELD = 0x2A9;
-        private const int OFFSET_ARG_CLASS_NAME = 0x900;
-        private const int OFFSET_ARG_NAME_SPACE = 0x980;
-        private const int OFFSET_RET = 0x880;
+        private const int OFFSET_FUNC_STATIC_FIELD = 0x23D;
+        private const int OFFSET_ARG_CLASS_NAME = 0x3C8;
+        private const int OFFSET_ARG_NAME_SPACE = 0x408;
+        private const int OFFSET_RET = 0x3C0;
 
         private readonly HandleRef hProc;
         private readonly bool injected;
@@ -18,8 +18,8 @@ namespace G2D_Monitor.Game
         public Mono(HandleRef hProc)
         {
             this.hProc = hProc;
-            allocAddr = VirtualAllocEx(hProc, IntPtr.Zero, new IntPtr(4096), MEM_COMMIT, EXECUTE_READ_WRITE);
-            Memory.Write(hProc, allocAddr, Properties.Resources.GGS);
+            allocAddr = VirtualAllocEx(hProc, IntPtr.Zero, new IntPtr(1096), MEM_COMMIT, EXECUTE_READ_WRITE);
+            Memory.Write(hProc, allocAddr, Properties.Resources.g2d);
             if (!(injected = Call(0))) VirtualFreeEx(hProc, allocAddr, IntPtr.Zero, MEM_RELEASE);
         }
 
