@@ -16,5 +16,5 @@
 
 添加每轮游戏回放功能，方便看清楚哪个老六混刀
 
-<img src="https://user-images.githubusercontent.com/26305635/216545084-3525d8ed-213e-48a7-abad-d7cc036b9cd2.png" alt="drawing" width="600"/>
+<img src="https://user-images.githubusercontent.com/26305635/216839274-0deb027f-78f5-4d14-849c-ead54341eeb8.png" alt="drawing" width="600"/>
 <img src="https://user-images.githubusercontent.com/26305635/216838783-24b2af75-dc2d-4e16-ae62-f06a62a033ec.png" alt="drawing" width="600"/>
