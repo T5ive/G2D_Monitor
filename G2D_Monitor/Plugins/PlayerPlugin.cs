@@ -9,21 +9,19 @@ namespace G2D_Monitor.Plugins
 
         protected override string Name => "Players";
 
-        protected override void DoUpdate(Context? context)
+        protected override void OnGameExit()
         {
-            if (context == null)
+            foreach (ListViewItem item in MainListView.Items) item.SubItems[1].Text = string.Empty;
+        }
+
+        protected override void DoUpdate(Context context)
+        {
+            foreach (ListViewItem item in MainListView.Items)
             {
-                foreach (ListViewItem item in MainListView.Items) item.SubItems[1].Text = string.Empty;
-            }
-            else
-            {
-                foreach (ListViewItem item in MainListView.Items)
+                if (item.Tag is KeyValuePair<int, PropertyInfo> pair)
                 {
-                    if (item.Tag is KeyValuePair<int, PropertyInfo> pair)
-                    {
-                        var text = pair.Value.GetValue(context.Players[pair.Key])?.ToString() ?? string.Empty;
-                        if (!item.SubItems[1].Text.Equals(text)) item.SubItems[1].Text = text;
-                    }
+                    var text = pair.Value.GetValue(context.Players[pair.Key])?.ToString() ?? string.Empty;
+                    if (!item.SubItems[1].Text.Equals(text)) item.SubItems[1].Text = text;
                 }
             }
         }
@@ -45,6 +43,13 @@ namespace G2D_Monitor.Plugins
                     item.SubItems.Add(string.Empty);
                 }
             }
+            MainListView.MouseDoubleClick += (_, e) => OnDoubleClick(e);
+        }
+
+        private void OnDoubleClick(MouseEventArgs e)
+        {
+            var item = MainListView.GetItemAt(e.X, e.Y);
+            if (item != null) Clipboard.SetText(item.SubItems[1].Text);
         }
     }
 }

@@ -10,56 +10,55 @@ namespace G2D_Monitor
         private const string PROCESS_NAME = "Goose Goose Duck";
         private const int INIT_PAUSE_TIME = 1000;
         private const int DETECT_GAME_INTERVAL = 100;
-        private volatile bool running;
+        private volatile bool running = true;
 
         public MainForm() => InitializeComponent();
+
+        public ContextMenuStrip NewMenuStrip() => new(components);
 
         private void MainForm_Load(object sender, EventArgs e)
         {
             Plugin.Register<PlayerPlugin>();
             Plugin.Register<MetaPlugin>();
-            FormClosing += (_, _) => running = false;
-            Watch();
+            Plugin.Register<MapPlugin>();
+            FormClosing += (_, _) => { running = false; Plugin.Close(); };
+            new Task(Watch).Start();
         }
 
         public void Watch()
         {
-            running = true;
-            new Task(() =>
+            Process? process = null;
+            Context? context = null;
+            while (running)
             {
-                Process? process = null;
-                Context? context = null;
-                while (running)
+                if (process == null || process.HasExited)
                 {
-                    if (process == null || process.HasExited)
+                    if (process != null)
                     {
-                        if (process != null)
-                        {
-                            process.Dispose();
-                            process = null;
-                            context = null;
-                            Plugin.Update(null);
-                        }
-                        foreach (var proc in Process.GetProcessesByName(PROCESS_NAME))
-                        {
-                            if (!proc.HasExited)
-                            {
-                                Thread.Sleep(INIT_PAUSE_TIME);
-                                context = new(process = proc);
-                                break;
-                            }
-                        }
-                        if (process == null) Thread.Sleep(DETECT_GAME_INTERVAL);
+                        process.Dispose();
+                        process = null;
+                        context = null;
+                        Plugin.Update(null);
                     }
-
-                    if (context != null)
+                    foreach (var proc in Process.GetProcessesByName(PROCESS_NAME))
                     {
-                        context.Update();
-                        Plugin.Update(context);
+                        if (!proc.HasExited)
+                        {
+                            Thread.Sleep(INIT_PAUSE_TIME);
+                            context = new(process = proc);
+                            break;
+                        }
                     }
+                    if (process == null) Thread.Sleep(DETECT_GAME_INTERVAL);
                 }
-                process?.Dispose();
-            }).Start();
+
+                if (context != null)
+                {
+                    context.Update();
+                    Plugin.Update(context);
+                }
+            }
+            process?.Dispose();
         }
     }
 }

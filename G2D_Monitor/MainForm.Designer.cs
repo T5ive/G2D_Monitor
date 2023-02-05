@@ -28,6 +28,8 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.MainStatusStrip = new System.Windows.Forms.StatusStrip();
             this.MainTabControl = new System.Windows.Forms.TabControl();
             this.SuspendLayout();
@@ -56,6 +58,7 @@
             this.ClientSize = new System.Drawing.Size(800, 450);
             this.Controls.Add(this.MainTabControl);
             this.Controls.Add(this.MainStatusStrip);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "G2D Monitor";

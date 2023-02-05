@@ -11,8 +11,8 @@ namespace G2D_Monitor.Manager
 
         private const string PLAYER_NAME_SPACE = "Handlers.GameHandlers.PlayerHandlers";
         private const string PLAYER_CLASS_NAME = "PlayerController";
-        private const string GAME_NAME_SPACE = "Managers";
-        private const string GAME_CLASS_NAME = "MainManager";
+        private const string MAIN_NAME_SPACE = "Managers";
+        private const string MAIN_CLASS_NAME = "MainManager";
         private const string LOBBY_NAME_SPACE = "Handlers.LobbyHandlers";
         private const string LOBBY_CLASS_NAME = "LobbySceneHandler";
 
@@ -26,14 +26,16 @@ namespace G2D_Monitor.Manager
 
         public readonly ReadOnlyCollection<Player> Players;
 
+        public readonly Process GameProcess;
+
         private readonly HandleRef hProc;
         private readonly IntPtr addrPlayer;
-        private readonly IntPtr addrPlayerStart;
-        private readonly IntPtr addrGame;
+        private readonly IntPtr addrMain;
         private readonly IntPtr addrLobby;
 
         public Context(Process process)
         {
+            GameProcess = process;
             hProc = new(process, process.Handle);
             var list = new List<Player>(PLAYER_NUM);
             for (var i = 0; i < PLAYER_NUM; i++) list.Add(new());
@@ -41,14 +43,8 @@ namespace G2D_Monitor.Manager
             using (var mono = new Mono(hProc))
             {
                 addrPlayer = mono.GetStaticFields(PLAYER_NAME_SPACE, PLAYER_CLASS_NAME);
-                addrGame = mono.GetStaticFields(GAME_NAME_SPACE, GAME_CLASS_NAME);
+                addrMain = mono.GetStaticFields(MAIN_NAME_SPACE, MAIN_CLASS_NAME);
                 addrLobby = mono.GetStaticFields(LOBBY_NAME_SPACE, LOBBY_CLASS_NAME);
-                if (addrPlayer != IntPtr.Zero)
-                    addrPlayerStart = Memory.ReadIntPtr(hProc, Memory.ReadIntPtr(hProc, addrPlayer + 0x20) + 0x18);
-                if (addrGame != IntPtr.Zero)
-                    addrGame = Memory.ReadIntPtr(hProc, Memory.ReadIntPtr(hProc, addrGame) + 0xB0);
-                if (addrLobby != IntPtr.Zero)
-                    addrLobby = Memory.ReadIntPtr(hProc, addrLobby);
             }
         }
 
@@ -58,22 +54,37 @@ namespace G2D_Monitor.Manager
             {
                 DeadPlayersCount = BitConverter.ToInt32(Memory.Read(hProc, addrPlayer + 0x28, sizeof(int)));
                 APlayerHasDied = BitConverter.ToBoolean(Memory.Read(hProc, addrPlayer + 0x34, sizeof(bool)));
+                var addrStart = Memory.ReadIntPtr(hProc, Memory.ReadIntPtr(hProc, addrPlayer + 0x20) + 0x18);
+                if (addrStart != IntPtr.Zero)
+                {
+                    for (var i = 0; i < Players.Count; i++)
+                    {
+                        var addr = Memory.ReadIntPtr(hProc, addrStart + 0x30 + 0x18 * i);
+                        if (addr == IntPtr.Zero) Players[i].Disable();
+                        else
+                        {
+                            var data = Memory.Read(hProc, addr + Player.OFFSET_START, Player.OFFSET_LENGTH);
+                            Players[i].Nickname = Memory.ReadString(hProc, new IntPtr(BitConverter.ToInt64(data, Player.OFFSET_NICKNAME - Player.OFFSET_START)));
+                            Players[i].Update(data);
+                        }
+                    }
+                }
             }
-            if (addrPlayerStart != IntPtr.Zero)
+            if (addrMain != IntPtr.Zero)
             {
-                for (var i = 0; i < Players.Count; i++)
-                    Players[i].Update(hProc, addrPlayerStart + 0x30 + 0x18 * i);
-            }
-            if (addrGame != IntPtr.Zero)
-            {
-                State = (GameState)BitConverter.ToUInt16(Memory.Read(hProc, addrGame + 0x18, sizeof(ushort)));
+                var addrGame = Memory.ReadIntPtr(hProc, Memory.ReadIntPtr(hProc, addrMain) + 0xB0);
+                if (addrGame != IntPtr.Zero) State = (GameState)BitConverter.ToUInt16(Memory.Read(hProc, addrGame + 0x18, sizeof(ushort)));
             }
             if (addrLobby != IntPtr.Zero)
             {
-                RoomId = Memory.ReadString(hProc, addrLobby + 0x100);
-                RoomMap = Memory.ReadString(hProc, addrLobby + 0x130);
-                MapTheme = Memory.ReadString(hProc, addrLobby + 0x450);
-                TimeInRoom = BitConverter.ToSingle(Memory.Read(hProc, addrLobby + 0x458, sizeof(float)));
+                var addr = Memory.ReadIntPtr(hProc, addrLobby);
+                if (addr != IntPtr.Zero)
+                {
+                    RoomId = Memory.ReadString(hProc, Memory.ReadIntPtr(hProc, addr + 0x100));
+                    RoomMap = Memory.ReadString(hProc, Memory.ReadIntPtr(hProc, addr + 0x130));
+                    MapTheme = Memory.ReadString(hProc, Memory.ReadIntPtr(hProc, addr + 0x450));
+                    TimeInRoom = BitConverter.ToSingle(Memory.Read(hProc, addr + 0x458, sizeof(float)));
+                }
             }
         }
     }

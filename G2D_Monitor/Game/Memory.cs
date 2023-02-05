@@ -9,10 +9,9 @@ namespace G2D_Monitor.Game
 
         public static string ReadString(HandleRef hProc, IntPtr address)
         {
-            var strAddr = ReadIntPtr(hProc, address);
-            var len = BitConverter.ToInt32(Read(hProc, strAddr + 0x10, sizeof(int)));
+            var len = BitConverter.ToInt32(Read(hProc, address + 0x10, sizeof(int)));
             if (len <= 0 || len >= 128) return string.Empty;
-            var data = Read(hProc, strAddr + 0x14, len * 2);
+            var data = Read(hProc, address + 0x14, len * 2);
             return Encoding.UTF8.GetString(Encoding.Convert(Encoding.Unicode, Encoding.UTF8, data));
         }
 
@@ -29,6 +28,7 @@ namespace G2D_Monitor.Game
         public static byte[] Read(HandleRef hProc, IntPtr address, int length)
         {
             var data = new byte[length];
+            if (address == IntPtr.Zero) return data;
             ReadProcessMemory(hProc, address, data, new IntPtr(data.Length), out _);
             return data;
         }

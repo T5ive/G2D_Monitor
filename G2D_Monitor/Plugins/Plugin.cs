@@ -4,28 +4,53 @@ namespace G2D_Monitor.Plugins
 {
     public abstract class Plugin
     {
-        private static readonly List<Plugin> plugins = new();
+        private static TabPage? CurrentTab = null;
+
+        private static readonly List<Plugin> Plugins = new();
 
         public static void Register<T>() where T : Plugin, new() => Register(new T());
 
         public static void Register(Plugin plugin)
         {
-            var tab = new TabPage(plugin.Name);
-            MainForm.Instance.MainTabControl.SuspendLayout();
-            tab.SuspendLayout();
-            MainForm.Instance.MainTabControl.TabPages.Add(tab);
-            plugin.Initialize(tab);
-            MainForm.Instance.MainTabControl.ResumeLayout(false);
-            tab.ResumeLayout(false);
-            lock (plugins) plugins.Add(plugin);
+            if (plugin.UIRequired)
+            {
+                var tab = new TabPage(plugin.Name);
+                MainForm.Instance.MainTabControl.SuspendLayout();
+                tab.SuspendLayout();
+                MainForm.Instance.MainTabControl.TabPages.Add(tab);
+                plugin.Initialize(plugin.bindedTab = tab);
+                MainForm.Instance.MainTabControl.ResumeLayout(false);
+                tab.ResumeLayout(false);
+            }
+            Plugins.Add(plugin);
+        }
+
+        public static void Close()
+        {
+            foreach (var plugin in Plugins) plugin.OnClosing();
         }
 
         public static void Update(Context? context)
         {
-            var list = new List<Plugin>();
-            lock (plugins) list.AddRange(plugins);
-            try { MainForm.Instance.Invoke(() => { foreach (var plugin in list) plugin.DoUpdate(context); }); } catch { }
+            try 
+            {
+                MainForm.Instance.Invoke(() =>
+                {
+                    CurrentTab = MainForm.Instance.MainTabControl.SelectedTab;
+                    if (context == null)
+                    {
+                        foreach (var plugin in Plugins) plugin.OnGameExit();
+                    }
+                    else
+                    {
+                        foreach (var plugin in Plugins) plugin.DoUpdate(context);
+                    }
+                }); 
+            } 
+            catch { }
         }
+
+        protected static ContextMenuStrip NewMenuStrip() => MainForm.Instance.NewMenuStrip();
 
         protected static ListView NewListView()
         {
@@ -40,10 +65,30 @@ namespace G2D_Monitor.Plugins
             return listView;
         }
 
-        protected abstract string Name { get; }
+        protected static ToolStripStatusLabel NewStatusLabel(int width = 0)
+        {
+            var label = new ToolStripStatusLabel();
+            label.TextAlign = ContentAlignment.MiddleLeft;
+            if (width > 0) { label.AutoSize = false; label.Width = width; }
+            else label.AutoSize = true;
+            MainForm.Instance.MainStatusStrip.Items.Add(label);
+            return label;
+        }
 
-        protected abstract void Initialize(TabPage tab);
+        private TabPage? bindedTab = null;
 
-        protected abstract void DoUpdate(Context? context);
+        protected bool IsTabActive => bindedTab == CurrentTab;
+
+        protected virtual bool UIRequired => true;
+
+        protected virtual string Name => string.Empty;
+
+        protected virtual void Initialize(TabPage tab) { }
+
+        protected abstract void DoUpdate(Context context);
+
+        protected virtual void OnGameExit() { }
+
+        protected virtual void OnClosing() { }
     }
 }

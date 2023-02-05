@@ -9,21 +9,19 @@ namespace G2D_Monitor.Plugins
 
         protected override string Name => "Meta";
 
-        protected override void DoUpdate(Context? context)
+        protected override void OnGameExit()
         {
-            if (context == null)
+            foreach (ListViewItem item in MainListView.Items) item.SubItems[1].Text = string.Empty;
+        }
+
+        protected override void DoUpdate(Context context)
+        {
+            foreach (ListViewItem item in MainListView.Items)
             {
-                foreach (ListViewItem item in MainListView.Items) item.SubItems[1].Text = string.Empty;
-            }
-            else
-            {
-                foreach (ListViewItem item in MainListView.Items)
+                if (item.Tag is PropertyInfo prop)
                 {
-                    if (item.Tag is PropertyInfo prop)
-                    {
-                        var text = prop.GetValue(context)?.ToString() ?? string.Empty;
-                        if (!item.SubItems[1].Text.Equals(text)) item.SubItems[1].Text = text;
-                    }
+                    var text = prop.GetValue(context)?.ToString() ?? string.Empty;
+                    if (!item.SubItems[1].Text.Equals(text)) item.SubItems[1].Text = text;
                 }
             }
         }
