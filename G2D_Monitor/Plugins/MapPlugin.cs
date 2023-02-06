@@ -10,15 +10,15 @@ namespace G2D_Monitor.Plugins
         private const int RADIUS = 8;
         private static readonly Vector3[] MAPPINGS = new Vector3[]
         {
-            new Vector3(-36.21f, -40.23f, 0.08f),
-            new Vector3(-28.12f, -42.44f, 0.0585f),
-            new Vector3(-68.08f, -44.96f, 0.0948f),
-            new Vector3(-28.12f, -42.44f, 0.05f),
-            new Vector3(-66.84f, -28.49f, 0.0947f),
+            new Vector3(36.21f, 40.23f, 12.5f),
+            new Vector3(28.12f, 42.44f, 17.094f),
+            new Vector3(68.08f, 44.96f, 10.5485f),
+            new Vector3(60.82247f, 52.73375f, 7.6372313f),
+            new Vector3(66.84f, 28.49f, 10.559662f),
             Vector3.Zero,
-            new Vector3(-41.08f, -40.5f, 0.0847f),
-            new Vector3(-45.6f, -24.82f, 0.0766f),
-            new Vector3(-53.24f, -29.55f, 0.086f),
+            new Vector3(41.08f, 40.5f, 11.8064f),
+            new Vector3(45.6f, 24.82f, 13.05483f),
+            new Vector3(53.24f, 29.55f, 11.6279f),
         };
         private static readonly Font DEFAULT_FONT = new(new FontFamily(GenericFontFamilies.Serif), 16, FontStyle.Bold);
         private static readonly Brush BRUSH_NORMAL = new SolidBrush(Color.White); 
@@ -52,9 +52,9 @@ namespace G2D_Monitor.Plugins
             {
                 if (!player.Active) break;
                 list.Add(new(player.ActorNumber, 
-                    GetOrAdd(Suspects, player.ActorNumber, () => player.HasKilledThisRound || player.InSmog), 
-                    GetOrAdd(Ducks, player.ActorNumber, () => player.IsInvisible || player.IsLatchedOntoPlayer || player.IsMorphed), 
-                    GetOrAdd(Deads, player.ActorNumber, () => player.IsGhost || player.IsLatchedOntoPlayer || player.TimeOfDeath > 0),
+                    GetOrAdd(Suspects, player.ActorNumber, () => player.HasKilledThisRound), 
+                    GetOrAdd(Ducks, player.ActorNumber, () => player.IsInvisible || player.InTelepathic || player.IsMorphed), 
+                    GetOrAdd(Deads, player.ActorNumber, () => player.IsGhost),
                     player.Nickname, player.Position));
             }
             return list;
@@ -83,7 +83,7 @@ namespace G2D_Monitor.Plugins
             {
                 if (unit.Dead) continue;
                 var brush = unit.IsDuck ? BRUSH_DUCK : (unit.IsSuspect ? BRUSH_SUSPECT : BRUSH_NORMAL);
-                var pos = (unit.Position - MAPPINGS[CurrentMap]) / MAPPINGS[CurrentMap].Z;
+                var pos = (unit.Position + MAPPINGS[CurrentMap]) * MAPPINGS[CurrentMap].Z;
                 pos.Y = map.Height - pos.Y;
                 g.FillEllipse(brush, pos.X - RADIUS, pos.Y - RADIUS, RADIUS * 2, RADIUS * 2);
                 g.DrawString(unit.Nickname, DEFAULT_FONT, brush, pos.X - RADIUS, pos.Y + RADIUS * 1.5f);

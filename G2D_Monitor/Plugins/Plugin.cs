@@ -45,7 +45,8 @@ namespace G2D_Monitor.Plugins
                     {
                         foreach (var plugin in Plugins) plugin.DoUpdate(context);
                     }
-                }); 
+                });
+                Thread.Sleep(10);
             } 
             catch { }
         }

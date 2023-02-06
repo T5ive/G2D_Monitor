@@ -5,7 +5,7 @@ namespace G2D_Monitor.Plugins
     internal abstract class FramePlugin<T> : Plugin
     {
         private const int FIRST_ROUND_LOADING_TIME = 10000;
-        private const int OTHER_ROUND_LOADING_TIME = 2000;
+        private const int OTHER_ROUND_LOADING_TIME = 1000;
 
         private readonly TrackBar FrameBar = new();
         private readonly PictureBox FramePanel = new();
@@ -21,6 +21,7 @@ namespace G2D_Monitor.Plugins
         private List<Frame>? CurrentRoundFrames;
         private GameState LastState = GameState.Unknown;
         private long CurrentRoundStartTime;
+        private long LastCaptureTime;
 
         protected override void Initialize(TabPage tab)
         {
@@ -77,18 +78,20 @@ namespace G2D_Monitor.Plugins
                 var time = Environment.TickCount64;
                 if (CurrentRoundFrames == null)
                 {
+                    LastCaptureTime = time;
                     CurrentRoundFrames = new();
                     CurrentRoundStartTime = time + (AllFrames.Count == 0 ? FIRST_ROUND_LOADING_TIME : OTHER_ROUND_LOADING_TIME);
                 }
-                else if (time >= CurrentRoundStartTime)
+                else if (time >= CurrentRoundStartTime && time - LastCaptureTime >= 1000 / MaxFPS)
                 {
+                    LastCaptureTime = time;
                     time -= CurrentRoundStartTime;
                     ProgressStatusLabel.Text = $"{Enum.GetName(state)}: {ToSecondText(time)}";
                     var frame = new Frame(GetFrameData(context), time);
                     CurrentRoundFrames.Add(frame);
                     if (AlwaysShowNewestFrame && IsTabActive) ShowImage(frame);
                 }
-                else if (LastState != state)
+                if (LastState != state)
                 {
                     ProgressStatusLabel.Text = Enum.GetName(state);
                     LastState = state;
@@ -116,7 +119,8 @@ namespace G2D_Monitor.Plugins
                     item.Click += RoundItemClick;
                     PanelMenu.Items.Add(item);
                     if (PanelMenu.Items.Count == 2) FramePanel.ContextMenuStrip = PanelMenu;
-                    RoundItemClick(item, EventArgs.Empty);
+                    var val = SelectRound(item);
+                    if (IsTabActive) FrameBar.Value = val;
                 }
                 CurrentRoundFrames = null;
                 ProgressStatusLabel.Text = Enum.GetName(state);
@@ -126,20 +130,24 @@ namespace G2D_Monitor.Plugins
 
         private void RoundItemClick(object? sender, EventArgs e)
         {
-            if (sender is ToolStripMenuItem item)
-            {
-                SelectedRound = (int)item.Tag;
-                if (SelectedRound >= AllFrames.Count) return;
-                var frames = AllFrames[SelectedRound];
-                foreach (ToolStripMenuItem subItem in item.Owner.Items) subItem.Checked = item == subItem;
-                var fps = Math.Round(frames.Count * 1000.0 / frames[^1].Time, 1);
-                FrameInfo = "FPS: " + fps + ", Time: {0:F3} / " + ToSecondText(frames[^1].Time) + ", Frame: {1} / " + frames.Count;
-                FrameBar.LargeChange = (int)Math.Round(fps);
-                FrameBar.Value = FrameBar.Maximum = frames.Count - 1;
-            }
+            if (sender is ToolStripMenuItem item) FrameBar.Value = SelectRound(item);
+        }
+
+        private int SelectRound(ToolStripMenuItem item)
+        {
+            SelectedRound = (int)item.Tag;
+            if (SelectedRound >= AllFrames.Count) return 0;
+            var frames = AllFrames[SelectedRound];
+            foreach (ToolStripMenuItem subItem in item.Owner.Items) subItem.Checked = item == subItem;
+            var fps = Math.Round(frames.Count * 1000.0 / frames[^1].Time, 1);
+            FrameInfo = "FPS: " + fps + ", Time: {0:F3} / " + ToSecondText(frames[^1].Time) + ", Frame: {1} / " + frames.Count;
+            FrameBar.LargeChange = (int)Math.Round(fps);
+            return FrameBar.Maximum = frames.Count - 1;
         }
 
         protected override bool UIRequired => true;
+
+        protected virtual float MaxFPS => 10;
 
         protected override void OnGameExit() => OnGameEnding();
 

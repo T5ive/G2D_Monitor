@@ -15,11 +15,11 @@ namespace G2D_Monitor.Manager
         public int ActorNumber { get; private set; }//0x1B0
         public bool HasKilledThisRound { get; private set; }//0x2FC
         public bool HasReportedProfesionalKill { get; private set; }//0xD4
-        public bool InSmog { get; private set; }//0xD5
-        public bool InTelepathic { get; private set; }//0x3A5 感应 todo 检测被还是感应别人
+        public bool InSmog { get; private set; }//0xD5  环境-沙漠沙尘暴
+        public bool InTelepathic { get; private set; }//0x3A5 超能力杀人
         public bool IsGhost { get; private set; } //0x198
         public bool IsInPelican { get; private set; }//0x3A4 鹈鹕体内
-        public bool IsInvisible { get; private set; }//0x33A
+        public bool IsInvisible { get; private set; }//0x33A 隐身
         public bool IsLatchedOntoPlayer { get; private set; }//0x380
         public bool IsMorphed { get; private set; }//0x339 变形
         //public string KilledBy { get; private set; } = string.Empty; //0xD8
