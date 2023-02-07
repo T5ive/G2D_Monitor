@@ -1,29 +1,56 @@
 ﻿using G2D_Monitor.Manager;
 using G2D_Monitor.Plugins.Common;
+using G2D_Monitor.Properties;
 using System.Drawing.Text;
 using System.Numerics;
 
 namespace G2D_Monitor.Plugins
 {
-    internal sealed class MapPlugin : FramePlugin<List<Unit>>
+    internal sealed class MapPlugin : FramePlugin
     {
-        private const int RADIUS = 8;
-        private static readonly Vector3[] MAPPINGS = new Vector3[]
+        private const int META_OFFSET = 12;
+        private const int META_FONT_OFFSET = 4;
+        private const int META_HEIGHT = 44;
+        private const int META_FONT_SIZE = 24;
+
+        public static int Radius { get => Settings.Default.Radius; set { Settings.Default.Radius = value; } }
+        public static int FontSize { get => Settings.Default.FontSize; set { Settings.Default.FontSize = value; _font = new(new FontFamily(GenericFontFamilies.Serif), value, FontStyle.Bold); } }
+        public static Color ColorGoose { get => Settings.Default.CGoose; set { Settings.Default.CGoose = value; _bGoose = new SolidBrush(value); } }
+        public static Color ColorSuspect { get => Settings.Default.CSuspect; set { Settings.Default.CSuspect = value; _bSuspect = new SolidBrush(value); } }
+        public static Color ColorDuck { get => Settings.Default.CDuck; set { Settings.Default.CDuck = value; _bDuck = new SolidBrush(value); } }
+
+        private static Font _font = new(new FontFamily(GenericFontFamilies.Serif), Settings.Default.FontSize, FontStyle.Bold);
+        private static Brush _bGoose = new SolidBrush(Settings.Default.CGoose);
+        private static Brush _bSuspect = new SolidBrush(Settings.Default.CSuspect);
+        private static Brush _bDuck = new SolidBrush(Settings.Default.CDuck);
+
+        private static readonly Brush META_BACK_BRASH = new SolidBrush(Color.White);
+        private static readonly Brush META_FORE_BRASH = new SolidBrush(Color.Black);
+        private static readonly Font META_FONT = new(new FontFamily(GenericFontFamilies.Serif), META_FONT_SIZE, FontStyle.Bold);
+        private static readonly Vector2[] MAPPINGS_B = new Vector2[]
         {
-            new Vector3(36.21f, 40.23f, 12.5f),
-            new Vector3(28.12f, 42.44f, 17.094f),
-            new Vector3(68.08f, 44.96f, 10.5485f),
-            new Vector3(60.82247f, 52.73375f, 7.6372313f),
-            new Vector3(66.84f, 28.49f, 10.559662f),
-            Vector3.Zero,
-            new Vector3(41.08f, 40.5f, 11.8064f),
-            new Vector3(45.6f, 24.82f, 13.05483f),
-            new Vector3(53.24f, 29.55f, 11.6279f),
+            new Vector2(36.2639f, 39.68626f),
+            new Vector2(27.629484f, 41.955616f),
+            new Vector2(67.8007f, 45.026608f),
+            new Vector2(75.18318f, 51.779053f),
+            new Vector2(66.647026f, 27.624222f),
+            Vector2.Zero,
+            new Vector2(42.40496f, 40.4429f),
+            new Vector2(45.73738f, 24.93071f),
+            new Vector2(53.172234f, 29.226412f),
         };
-        private static readonly Font DEFAULT_FONT = new(new FontFamily(GenericFontFamilies.Serif), 16, FontStyle.Bold);
-        private static readonly Brush BRUSH_NORMAL = new SolidBrush(Color.White); 
-        private static readonly Brush BRUSH_SUSPECT = new SolidBrush(Color.DeepPink);
-        private static readonly Brush BRUSH_DUCK = new SolidBrush(Color.DarkRed);
+        private static readonly Vector2[] MAPPINGS_A = new Vector2[]
+        {
+            new Vector2(12.480058f, 12.432981f),
+            new Vector2(17.190145f, 17.089575f),
+            new Vector2(10.453817f, 10.317171f),
+            new Vector2(7.718966f, 7.7245717f),
+            new Vector2(10.445533f, 10.471038f),
+            Vector2.Zero,
+            new Vector2(11.580055f, 11.362657f),
+            new Vector2(12.940321f, 12.910908f),
+            new Vector2(11.51932f, 11.565213f)
+        };
 
         protected override string Name => "Map";
 
@@ -44,7 +71,7 @@ namespace G2D_Monitor.Plugins
         private int CurrentMap;
         private Image? LoadedMapImage;
 
-        protected override List<Unit> GetFrameData(Context context)
+        protected override IFrame GetFrame(Context context, long time)
         {
             if (int.TryParse(context.RoomMap, out var v) && v >= 0 && v < 9) CurrentMap = v;
             var list = new List<Unit>();
@@ -57,7 +84,7 @@ namespace G2D_Monitor.Plugins
                     GetOrAdd(Deads, player.ActorNumber, () => player.IsGhost),
                     player.Nickname, player.Position));
             }
-            return list;
+            return new MapFrame(time, new(context.DeadPlayersCount, list));
         }
 
         private static bool GetOrAdd(HashSet<int> set, int id, Func<bool> func)
@@ -68,7 +95,7 @@ namespace G2D_Monitor.Plugins
             return true;
         }
 
-        protected override Image? GetImage(List<Unit> data)
+        protected override Image? GetImage(IFrame frame)
         {
             var map = GetMapImage();
             if (map == null) return null;
@@ -77,16 +104,20 @@ namespace G2D_Monitor.Plugins
                 LoadedMapImage?.Dispose();
                 LoadedMapImage = new Bitmap(map.Width, map.Height);
             }
+            var r = Radius;
+            var uc = ((MapFrame)frame).Units;
             using var g = Graphics.FromImage(LoadedMapImage);
             g.DrawImage(map, 0, 0);
-            foreach (var unit in data)
+            g.FillRectangle(META_BACK_BRASH, META_OFFSET, META_OFFSET, META_FONT_SIZE * 6, META_HEIGHT);
+            g.DrawString($"Dead: {uc.DeadNum}", META_FONT, META_FORE_BRASH, META_OFFSET + META_FONT_OFFSET, META_OFFSET + META_FONT_OFFSET);
+            foreach (var unit in uc)
             {
                 if (unit.Dead) continue;
-                var brush = unit.IsDuck ? BRUSH_DUCK : (unit.IsSuspect ? BRUSH_SUSPECT : BRUSH_NORMAL);
-                var pos = (unit.Position + MAPPINGS[CurrentMap]) * MAPPINGS[CurrentMap].Z;
+                var brush = unit.IsDuck ? _bDuck : (unit.IsSuspect ? _bSuspect : _bGoose);
+                var pos = (unit.Position + MAPPINGS_B[CurrentMap]) * MAPPINGS_A[CurrentMap];
                 pos.Y = map.Height - pos.Y;
-                g.FillEllipse(brush, pos.X - RADIUS, pos.Y - RADIUS, RADIUS * 2, RADIUS * 2);
-                g.DrawString(unit.Nickname, DEFAULT_FONT, brush, pos.X - RADIUS, pos.Y + RADIUS * 1.5f);
+                g.FillEllipse(brush, pos.X - r, pos.Y - r, r * 2, r * 2);
+                g.DrawString(unit.Nickname, _font, brush, pos.X - r, pos.Y + r * 1.5f);
             }
             return LoadedMapImage;
         }
@@ -95,14 +126,14 @@ namespace G2D_Monitor.Plugins
         {
             return CurrentMap switch
             {
-                0 => Properties.Resources._0,
-                1 => Properties.Resources._1,
-                2 => Properties.Resources._2,
-                3 => Properties.Resources._3,
-                4 => Properties.Resources._4,
-                6 => Properties.Resources._6,
-                7 => Properties.Resources._7,
-                8 => Properties.Resources._8,
+                0 => Resources._0,
+                1 => Resources._1,
+                2 => Resources._2,
+                3 => Resources._3,
+                4 => Resources._4,
+                6 => Resources._6,
+                7 => Resources._7,
+                8 => Resources._8,
                 _ => null,
             };
         }

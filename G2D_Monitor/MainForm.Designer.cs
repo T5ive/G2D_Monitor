@@ -5,7 +5,7 @@
         /// <summary>
         ///  Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        public readonly System.ComponentModel.IContainer components = new System.ComponentModel.Container();
 
         /// <summary>
         ///  Clean up any resources being used.
@@ -13,10 +13,7 @@
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
+            if (disposing) components.Dispose();
             base.Dispose(disposing);
         }
 
@@ -28,19 +25,33 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.MainStatusStrip = new System.Windows.Forms.StatusStrip();
+            this.Multiboxing = new System.Windows.Forms.ToolStripStatusLabel();
             this.MainTabControl = new System.Windows.Forms.TabControl();
+            this.MainStatusStrip.SuspendLayout();
             this.SuspendLayout();
             // 
             // MainStatusStrip
             // 
+            this.MainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.Multiboxing});
             this.MainStatusStrip.Location = new System.Drawing.Point(0, 428);
             this.MainStatusStrip.Name = "MainStatusStrip";
             this.MainStatusStrip.Size = new System.Drawing.Size(800, 22);
             this.MainStatusStrip.TabIndex = 0;
             this.MainStatusStrip.Text = "statusStrip1";
+            // 
+            // Multiboxing
+            // 
+            this.Multiboxing.IsLink = true;
+            this.Multiboxing.LinkBehavior = System.Windows.Forms.LinkBehavior.NeverUnderline;
+            this.Multiboxing.LinkColor = System.Drawing.SystemColors.Highlight;
+            this.Multiboxing.Margin = new System.Windows.Forms.Padding(0, 3, 4, 2);
+            this.Multiboxing.Name = "Multiboxing";
+            this.Multiboxing.Size = new System.Drawing.Size(77, 17);
+            this.Multiboxing.Text = "Multiboxing";
+            this.Multiboxing.VisitedLinkColor = System.Drawing.SystemColors.Highlight;
             // 
             // MainTabControl
             // 
@@ -63,6 +74,8 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "G2D Monitor";
             this.Load += new System.EventHandler(this.MainForm_Load);
+            this.MainStatusStrip.ResumeLayout(false);
+            this.MainStatusStrip.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -71,5 +84,6 @@
         #endregion
         internal TabControl MainTabControl;
         internal StatusStrip MainStatusStrip;
+        private ToolStripStatusLabel Multiboxing;
     }
 }

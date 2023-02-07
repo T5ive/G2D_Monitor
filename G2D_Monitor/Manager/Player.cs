@@ -1,6 +1,4 @@
 ﻿using System.Numerics;
-using System.Runtime.InteropServices;
-using G2D_Monitor.Game;
 
 namespace G2D_Monitor.Manager
 {
@@ -25,7 +23,7 @@ namespace G2D_Monitor.Manager
         //public string KilledBy { get; private set; } = string.Empty; //0xD8
         public string Nickname { get; set; } = string.Empty; //0x1E0
         public int TimeOfDeath { get; private set; }//0x19C
-        public Vector3 Position { get; private set; }//0x2D8
+        public Vector2 Position { get; private set; }//0x2D8
 
         public void Disable() => Active = false;
 
@@ -43,7 +41,7 @@ namespace G2D_Monitor.Manager
             IsLatchedOntoPlayer = BitConverter.ToBoolean(data, 0x380 - OFFSET_START);
             IsMorphed = BitConverter.ToBoolean(data, 0x339 - OFFSET_START);
             TimeOfDeath = BitConverter.ToInt32(data, 0x19C - OFFSET_START);
-            Position = new(BitConverter.ToSingle(data, 0x2D8 - OFFSET_START), BitConverter.ToSingle(data, 0x2D8 + sizeof(float) - OFFSET_START), BitConverter.ToSingle(data, 0x2D8 + sizeof(float) * 2 - OFFSET_START));
+            Position = new(BitConverter.ToSingle(data, 0x2D8 - OFFSET_START), BitConverter.ToSingle(data, 0x2D8 + sizeof(float) - OFFSET_START));
         }
     }
 }

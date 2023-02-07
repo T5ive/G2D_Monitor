@@ -22,6 +22,7 @@ namespace G2D_Monitor.Plugins
                 MainForm.Instance.MainTabControl.ResumeLayout(false);
                 tab.ResumeLayout(false);
             }
+            plugin.Activate();
             Plugins.Add(plugin);
         }
 
@@ -44,14 +45,13 @@ namespace G2D_Monitor.Plugins
                     else
                     {
                         foreach (var plugin in Plugins) plugin.DoUpdate(context);
+                        FramePlugin.FrameUpdate(context);
                     }
                 });
                 Thread.Sleep(10);
             } 
             catch { }
         }
-
-        protected static ContextMenuStrip NewMenuStrip() => MainForm.Instance.NewMenuStrip();
 
         protected static ListView NewListView()
         {
@@ -66,16 +66,6 @@ namespace G2D_Monitor.Plugins
             return listView;
         }
 
-        protected static ToolStripStatusLabel NewStatusLabel(int width = 0)
-        {
-            var label = new ToolStripStatusLabel();
-            label.TextAlign = ContentAlignment.MiddleLeft;
-            if (width > 0) { label.AutoSize = false; label.Width = width; }
-            else label.AutoSize = true;
-            MainForm.Instance.MainStatusStrip.Items.Add(label);
-            return label;
-        }
-
         private TabPage? bindedTab = null;
 
         protected bool IsTabActive => bindedTab == CurrentTab;
@@ -86,7 +76,9 @@ namespace G2D_Monitor.Plugins
 
         protected virtual void Initialize(TabPage tab) { }
 
-        protected abstract void DoUpdate(Context context);
+        protected virtual void Activate() { }
+
+        protected virtual void DoUpdate(Context context) { }
 
         protected virtual void OnGameExit() { }
 

@@ -1,42 +1,113 @@
 ﻿using G2D_Monitor.Manager;
-using System.Reflection;
+using G2D_Monitor.Plugins.Common;
 
 namespace G2D_Monitor.Plugins
 {
     internal class MetaPlugin : Plugin
     {
-        private readonly ListView MainListView = NewListView();
-
         protected override string Name => "Meta";
 
-        protected override void OnGameExit()
-        {
-            foreach (ListViewItem item in MainListView.Items) item.SubItems[1].Text = string.Empty;
-        }
+        private readonly HashSet<int> HasKilled = new();
+        private readonly HashSet<int> HasBeenInTelepathic = new();
+        private readonly HashSet<int> HasBeenInvisible = new();
+        private readonly HashSet<int> HasMorphed = new();
+        private readonly HashSet<int> Deads = new();
+
+        private GameState LastState = GameState.Unknown;
+
+        protected override void OnGameExit() => Clear();
 
         protected override void DoUpdate(Context context)
         {
-            foreach (ListViewItem item in MainListView.Items)
+            RomeIdSetter?.Invoke(context.RoomId);
+            if (context.State == GameState.InGame)
             {
-                if (item.Tag is PropertyInfo prop)
+                var listKiller = new List<string>();
+                var listSmog = new List<string>();
+                var listTelepathic = new List<string>();
+                var listDead = new List<string>();
+                var listInPelican = new List<string>();
+                var listInvisible = new List<string>();
+                var listMorphed = new List<string>();
+                foreach (var player in context.Players)
                 {
-                    var text = prop.GetValue(context)?.ToString() ?? string.Empty;
-                    if (!item.SubItems[1].Text.Equals(text)) item.SubItems[1].Text = text;
+                    if (!player.Active) break;
+                    if (GetOrAdd(HasKilled, player.ActorNumber, () => player.HasKilledThisRound))
+                        listKiller.Add(player.Nickname);
+                    if (player.InSmog) listSmog.Add(player.Nickname);
+                    if (GetOrAdd(HasBeenInTelepathic, player.ActorNumber, () => player.InTelepathic))
+                        listTelepathic.Add(player.Nickname);
+                    if (GetOrAdd(Deads, player.ActorNumber, () => player.IsGhost))
+                        listDead.Add(player.Nickname);
+                    if (player.IsInPelican) listInPelican.Add(player.Nickname);
+                    if (GetOrAdd(HasBeenInvisible, player.ActorNumber, () => player.IsInvisible))
+                        listInvisible.Add(player.Nickname);
+                    if (GetOrAdd(HasMorphed, player.ActorNumber, () => player.IsMorphed))
+                        listMorphed.Add(player.Nickname);
                 }
+                HasKilledSetter?.Invoke(string.Join(' ', listKiller));
+                InSmogSetter?.Invoke(string.Join(' ', listSmog));
+                TelepathicSetter?.Invoke(string.Join(' ', listTelepathic));
+                DeadsSetter?.Invoke(string.Join(' ', listDead));
+                InPelicanSetter?.Invoke(string.Join(' ', listInPelican));
+                InvisibleSetter?.Invoke(string.Join(' ', listInvisible));
+                MorphedSetter?.Invoke(string.Join(' ', listMorphed));
+                LastState = context.State;
+            }
+            else if (context.State != LastState)
+            {
+                if (context.State == GameState.InLobby) Clear();
+                LastState = context.State;
             }
         }
 
-        protected override void Initialize(TabPage tab)
+        private static bool GetOrAdd(HashSet<int> set, int id, Func<bool> func)
         {
-            tab.Controls.Add(MainListView);
-            var props = typeof(Context).GetProperties().ToList();
-            props.Sort((a, b) => a.Name.CompareTo(b.Name));
-            foreach (var prop in props)
-            {
-                var item = MainListView.Items.Add(prop.Name);
-                item.Tag = prop;
-                item.SubItems.Add(string.Empty);
-            }
+            if (set.Contains(id)) return true;
+            if (!func()) return false;
+            set.Add(id);
+            return true;
         }
+
+        private void Clear()
+        {
+            RomeIdSetter?.Invoke(string.Empty);
+            HasKilledSetter?.Invoke(string.Empty);
+            InSmogSetter?.Invoke(string.Empty);
+            TelepathicSetter?.Invoke(string.Empty);
+            DeadsSetter?.Invoke(string.Empty);
+            InPelicanSetter?.Invoke(string.Empty);
+            InvisibleSetter?.Invoke(string.Empty);
+            MorphedSetter?.Invoke(string.Empty);
+            HasKilled.Clear();
+            HasBeenInTelepathic.Clear();
+            HasBeenInvisible.Clear();
+            HasMorphed.Clear();
+            Deads.Clear();
+        }
+
+        private Action<string>? RomeIdSetter;
+        private Action<string>? HasKilledSetter;
+        private Action<string>? InSmogSetter;
+        private Action<string>? TelepathicSetter;
+        private Action<string>? DeadsSetter;
+        private Action<string>? InPelicanSetter;
+        private Action<string>? InvisibleSetter;
+        private Action<string>? MorphedSetter;
+        private KeyValuePanel? Panel;
+
+        protected override void Initialize(TabPage tab) =>
+            Panel = new KeyValuePanel()
+                .AddReadOnlyTextBox("RoomId", out RomeIdSetter, 80)
+                .AddReadOnlyTextBox("HasKilled", out HasKilledSetter)
+                .AddReadOnlyTextBox("In Smog", out InSmogSetter)
+                .AddReadOnlyTextBox("Telepathic", out TelepathicSetter)
+                .AddReadOnlyTextBox("Deads", out DeadsSetter)
+                .AddReadOnlyTextBox("In Pelican", out InPelicanSetter)
+                .AddReadOnlyTextBox("Invisible", out InvisibleSetter)
+                .AddReadOnlyTextBox("Morphed", out MorphedSetter)
+                .Attach(tab);
+
+        protected override void Activate() => Panel?.Align();
     }
 }

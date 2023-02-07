@@ -9,9 +9,9 @@ namespace G2D_Monitor.Plugins.Common
         public readonly bool IsDuck;
         public readonly bool Dead;
         public readonly string Nickname;
-        public readonly Vector3 Position;
+        public readonly Vector2 Position;
 
-        public Unit(int id, bool isSuspect, bool isDuck, bool dead, string nickname, Vector3 position)
+        public Unit(int id, bool isSuspect, bool isDuck, bool dead, string nickname, Vector2 position)
         {
             Id = id;
             IsSuspect = isSuspect;

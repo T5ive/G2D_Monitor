@@ -1,30 +1,35 @@
 ﻿using G2D_Monitor.Manager;
+using G2D_Monitor.Plugins.Common;
 
 namespace G2D_Monitor.Plugins
 {
-    internal abstract class FramePlugin<T> : Plugin
+    internal abstract class FramePlugin : Plugin
     {
+        private const float MIN_INTERVAL = 1000f / 10;
         private const int FIRST_ROUND_LOADING_TIME = 10000;
         private const int OTHER_ROUND_LOADING_TIME = 1000;
 
         private readonly TrackBar FrameBar = new();
         private readonly PictureBox FramePanel = new();
-        private readonly ContextMenuStrip PanelMenu = NewMenuStrip();
+        private readonly ContextMenuStrip PanelMenu = new(MainForm.Instance.components);
         private static readonly ToolStripStatusLabel ProgressStatusLabel = NewStatusLabel(148);
         private static readonly ToolStripStatusLabel FrameStatusLabel = NewStatusLabel();
-        
-        private readonly List<List<Frame>> AllFrames = new();
 
+        private static readonly List<FramePlugin> FramePlugins = new();
+        private static GameState LastState = GameState.Unknown;
+        private static long CurrentRoundStartTime;
+        private static long LastCaptureTime;
+        private static bool NewRound = true;
+        private static bool FirstRound = true;
+
+        private readonly List<List<IFrame>> AllFrames = new();
         private int SelectedRound;
         private string FrameInfo = string.Empty;
-
-        private List<Frame>? CurrentRoundFrames;
-        private GameState LastState = GameState.Unknown;
-        private long CurrentRoundStartTime;
-        private long LastCaptureTime;
+        private List<IFrame>? CurrentRoundFrames;
 
         protected override void Initialize(TabPage tab)
         {
+            FramePlugins.Add(this);
             FrameBar.BeginInit();
             ((System.ComponentModel.ISupportInitialize)FramePanel).BeginInit();
             FrameBar.AutoSize = false;
@@ -60,36 +65,52 @@ namespace G2D_Monitor.Plugins
             FrameStatusLabel.Text = string.Format(FrameInfo, ToSecondText(frame.Time), FrameBar.Value + 1);
         }
 
-        private void ShowImage(Frame? frame)
+        private void ShowImage(IFrame frame)
         {
-            if (IsTabActive || !frame.HasValue)
+            if (IsTabActive)
             {
                 var img = FramePanel.Image;
-                if (frame.HasValue) FramePanel.Image = GetImage(frame.Value.Data);
+                FramePanel.Image = GetImage(frame);
                 if (AlwaysDisposeLastImage) img?.Dispose();
             }
         }
 
-        protected override void DoUpdate(Context context)
+        private void CleanImage()
+        {
+            var img = FramePanel.Image;
+            FramePanel.Image = null;
+            if (AlwaysDisposeLastImage) img?.Dispose();
+        }
+
+        private static ToolStripStatusLabel NewStatusLabel(int width = 0)
+        {
+            var label = new ToolStripStatusLabel();
+            label.TextAlign = ContentAlignment.MiddleLeft;
+            if (width > 0) { label.AutoSize = false; label.Width = width; }
+            else label.AutoSize = true;
+            MainForm.Instance.MainStatusStrip.Items.Add(label);
+            return label;
+        }
+
+        public static void FrameUpdate(Context context)
         {
             var state = context.State;
             if (state == GameState.InGame)
             {
                 var time = Environment.TickCount64;
-                if (CurrentRoundFrames == null)
+                if (NewRound)
                 {
+                    NewRound = false;
                     LastCaptureTime = time;
-                    CurrentRoundFrames = new();
-                    CurrentRoundStartTime = time + (AllFrames.Count == 0 ? FIRST_ROUND_LOADING_TIME : OTHER_ROUND_LOADING_TIME);
+                    CurrentRoundStartTime = time + (FirstRound ? FIRST_ROUND_LOADING_TIME : OTHER_ROUND_LOADING_TIME);
+                    foreach (var plugin in FramePlugins) plugin.CurrentRoundFrames = new();
                 }
-                else if (time >= CurrentRoundStartTime && time - LastCaptureTime >= 1000 / MaxFPS)
+                else if (time >= CurrentRoundStartTime && time - LastCaptureTime >= MIN_INTERVAL)
                 {
                     LastCaptureTime = time;
                     time -= CurrentRoundStartTime;
                     ProgressStatusLabel.Text = $"{Enum.GetName(state)}: {ToSecondText(time)}";
-                    var frame = new Frame(GetFrameData(context), time);
-                    CurrentRoundFrames.Add(frame);
-                    if (AlwaysShowNewestFrame && IsTabActive) ShowImage(frame);
+                    foreach (var plugin in FramePlugins) plugin.AddNewFrame(context, time);
                 }
                 if (LastState != state)
                 {
@@ -99,33 +120,53 @@ namespace G2D_Monitor.Plugins
             }
             else if (LastState != state)
             {
+                FirstRound = false;
                 if (state == GameState.InLobby)
                 {
-                    ShowImage(null);
-                    FramePanel.ContextMenuStrip = null;
-                    PanelMenu.Items.Clear();
-                    FrameBar.Enabled = false;
+                    FirstRound = NewRound = true;
                     FrameStatusLabel.Text = string.Empty;
-                    OnGameEnding();
+                    foreach (var plugin in FramePlugins) plugin.NewGame();
                 }
-                else if (CurrentRoundFrames != null)
+                else if (!NewRound)
                 {
-                    int num;
-                    AllFrames.Add(CurrentRoundFrames);
-                    num = AllFrames.Count;
-                    FrameBar.Enabled = true;
-                    var item = new ToolStripMenuItem("Round " + num);
-                    item.Tag = num - 1;
-                    item.Click += RoundItemClick;
-                    PanelMenu.Items.Add(item);
-                    if (PanelMenu.Items.Count == 2) FramePanel.ContextMenuStrip = PanelMenu;
-                    var val = SelectRound(item);
-                    if (IsTabActive) FrameBar.Value = val;
+                    NewRound = true;
+                    foreach (var plugin in FramePlugins) plugin.AddNewRound();
                 }
-                CurrentRoundFrames = null;
                 ProgressStatusLabel.Text = Enum.GetName(state);
                 LastState = state;
             }
+        }
+
+        private void AddNewFrame(Context context, long time)
+        {
+            var frame = GetFrame(context, time);
+            CurrentRoundFrames?.Add(frame);
+            if (AlwaysShowNewestFrame && IsTabActive) ShowImage(frame);
+        }
+
+        private void NewGame()
+        {
+            CleanImage();
+            FramePanel.ContextMenuStrip = null;
+            PanelMenu.Items.Clear();
+            FrameBar.Enabled = false;
+            OnGameEnding();
+        }
+
+        private void AddNewRound()
+        {
+            if (CurrentRoundFrames == null) return;
+            int num;
+            AllFrames.Add(CurrentRoundFrames);
+            num = AllFrames.Count;
+            FrameBar.Enabled = true;
+            var item = new ToolStripMenuItem("Round " + num);
+            item.Tag = num - 1;
+            item.Click += RoundItemClick;
+            PanelMenu.Items.Add(item);
+            if (PanelMenu.Items.Count == 2) FramePanel.ContextMenuStrip = PanelMenu;
+            var val = SelectRound(item);
+            if (IsTabActive) FrameBar.Value = val;
         }
 
         private void RoundItemClick(object? sender, EventArgs e)
@@ -147,8 +188,6 @@ namespace G2D_Monitor.Plugins
 
         protected override bool UIRequired => true;
 
-        protected virtual float MaxFPS => 10;
-
         protected override void OnGameExit() => OnGameEnding();
 
         protected override void OnClosing() => OnGameEnding();
@@ -159,22 +198,10 @@ namespace G2D_Monitor.Plugins
 
         protected abstract bool AlwaysDisposeLastImage { get; }
 
-        protected abstract T GetFrameData(Context context);
+        protected abstract IFrame GetFrame(Context context, long time);
 
-        protected abstract Image? GetImage(T data);
+        protected abstract Image? GetImage(IFrame frame);
 
         protected virtual void OnGameEnding() { }
-
-        protected readonly struct Frame
-        {
-            public readonly T Data;
-            public readonly long Time;
-
-            public Frame(T data, long time)
-            {
-                Data = data;
-                Time = time;
-            }
-        }
     }
 }
