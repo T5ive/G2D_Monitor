@@ -14,8 +14,10 @@
 
 当前死亡数、玩家位置的地图标记，标点分为普通(白色)、嫌疑人(粉色，进雾/开刀)、鸭子（暗红，隐身/变形），颜色和字体可自行设置
 
+嫌疑人判定：某玩家死亡/被鹈鹕吃瞬间，离其最近的玩家
+
 # Comming Features
-添加每轮游戏回放功能，方便看清楚哪个老六混刀
+添加每轮游戏回放功能，方便看清楚哪个老六混刀（GDI截屏在WIN10下遇到一些问题，不知道有没懂的大佬可以交流一下）
 
 <img src="https://user-images.githubusercontent.com/26305635/217161208-dbd99b39-a21f-443b-a77a-c40fc587efa1.png" alt="drawing" width="600"/>
 <img src="https://user-images.githubusercontent.com/26305635/217161217-f74d9be9-b562-4814-9b9d-f8fa02b70b32.png" alt="drawing" width="600"/>

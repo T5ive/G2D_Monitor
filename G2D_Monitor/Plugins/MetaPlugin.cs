@@ -52,6 +52,8 @@ namespace G2D_Monitor.Plugins
                 InPelicanSetter?.Invoke(string.Join(' ', listInPelican));
                 InvisibleSetter?.Invoke(string.Join(' ', listInvisible));
                 MorphedSetter?.Invoke(string.Join(' ', listMorphed));
+                PelicanSuspectsSetter?.Invoke(string.Join(' ', MapPlugin.PelicanSuspects.Values));
+                KillerSuspectsSetter?.Invoke(string.Join(' ', MapPlugin.KillerSuspects.Values));
                 LastState = context.State;
             }
             else if (context.State != LastState)
@@ -94,6 +96,8 @@ namespace G2D_Monitor.Plugins
         private Action<string>? InPelicanSetter;
         private Action<string>? InvisibleSetter;
         private Action<string>? MorphedSetter;
+        private Action<string>? PelicanSuspectsSetter;
+        private Action<string>? KillerSuspectsSetter;
         private KeyValuePanel? Panel;
 
         protected override void Initialize(TabPage tab) =>
@@ -106,6 +110,8 @@ namespace G2D_Monitor.Plugins
                 .AddReadOnlyTextBox("In Pelican", out InPelicanSetter)
                 .AddReadOnlyTextBox("Invisible", out InvisibleSetter)
                 .AddReadOnlyTextBox("Morphed", out MorphedSetter)
+                .AddReadOnlyTextBox("Pelican Suspects", out PelicanSuspectsSetter)
+                .AddReadOnlyTextBox("Killer Suspects", out KillerSuspectsSetter)
                 .Attach(tab);
 
         protected override void Activate() => Panel?.Align();

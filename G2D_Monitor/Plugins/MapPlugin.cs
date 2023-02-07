@@ -19,6 +19,9 @@ namespace G2D_Monitor.Plugins
         public static Color ColorSuspect { get => Settings.Default.CSuspect; set { Settings.Default.CSuspect = value; _bSuspect = new SolidBrush(value); } }
         public static Color ColorDuck { get => Settings.Default.CDuck; set { Settings.Default.CDuck = value; _bDuck = new SolidBrush(value); } }
 
+        public static readonly Dictionary<int, string> PelicanSuspects = new();
+        public static readonly Dictionary<int, string> KillerSuspects = new();
+
         private static Font _font = new(new FontFamily(GenericFontFamilies.Serif), Settings.Default.FontSize, FontStyle.Bold);
         private static Brush _bGoose = new SolidBrush(Settings.Default.CGoose);
         private static Brush _bSuspect = new SolidBrush(Settings.Default.CSuspect);
@@ -67,6 +70,7 @@ namespace G2D_Monitor.Plugins
         private readonly HashSet<int> Suspects = new ();
         private readonly HashSet<int> Ducks = new ();
         private readonly HashSet<int> Deads = new ();
+        private readonly HashSet<int> InPelican = new ();
 
         private int CurrentMap;
         private Image? LoadedMapImage;
@@ -75,15 +79,46 @@ namespace G2D_Monitor.Plugins
         {
             if (int.TryParse(context.RoomMap, out var v) && v >= 0 && v < 9) CurrentMap = v;
             var list = new List<Unit>();
+            var victimsFromKiller = new List<Player>();
+            var victimsFromPelican = new List<Player>();
             foreach (var player in context.Players)
             {
-                if (player.Active) list.Add(new(player.ActorNumber,
-                    GetOrAdd(Suspects, player.ActorNumber, () => player.HasKilledThisRound), 
-                    GetOrAdd(Ducks, player.ActorNumber, () => player.IsInvisible || player.InTelepathic || player.IsMorphed), 
+                if (player.Active)
+                {
+                    if (player.IsGhost && !Deads.Contains(player.ActorNumber)) victimsFromKiller.Add(player);
+                    else if (player.IsInPelican && !InPelican.Contains(player.ActorNumber)) { InPelican.Add(player.ActorNumber); victimsFromPelican.Add(player); }
+                    list.Add(new(player.ActorNumber,
+                    GetOrAdd(Suspects, player.ActorNumber, () => player.HasKilledThisRound),
+                    GetOrAdd(Ducks, player.ActorNumber, () => player.IsInvisible || player.InTelepathic || player.IsMorphed),
                     GetOrAdd(Deads, player.ActorNumber, () => player.IsGhost), player.IsInPelican,
                     player.Nickname, player.Position));
+                }
             }
+            GetNearestPlayer(victimsFromKiller, context.Players, KillerSuspects);
+            GetNearestPlayer(victimsFromPelican, context.Players, PelicanSuspects);
             return new MapFrame(time, new(context.DeadPlayersCount, list));
+        }
+
+        private static void GetNearestPlayer(List<Player> victims, ICollection<Player> players, Dictionary<int, string> resultMap)
+        {
+            if (victims.Count == 0) return;
+            foreach (var victim in victims)
+            {
+                var distance = float.MaxValue;
+                Player? target = null;
+                foreach (Player player in players)
+                {
+                    if (player.ActorNumber == victim.ActorNumber || player.IsGhost || player.IsInPelican) continue;
+                    var d = Vector2.Distance(victim.Position, player.Position);
+                    if (d < distance)
+                    {
+                        distance = d;
+                        target = player;
+                    }
+                }
+                if (target != null && !resultMap.ContainsKey(target.ActorNumber))
+                    resultMap.Add(target.ActorNumber, target.Nickname);
+            }
         }
 
         private static bool GetOrAdd(HashSet<int> set, int id, Func<bool> func)
@@ -112,7 +147,8 @@ namespace G2D_Monitor.Plugins
             foreach (var unit in uc)
             {
                 if (unit.Dead || unit.IsInPelican) continue;
-                var brush = unit.IsDuck ? _bDuck : (unit.IsSuspect ? _bSuspect : _bGoose);
+                var brush = unit.IsDuck ? _bDuck : (unit.IsSuspect || PelicanSuspects.ContainsKey(unit.Id) || 
+                    KillerSuspects.ContainsKey(unit.Id) ? _bSuspect : _bGoose);
                 var pos = (unit.Position + MAPPINGS_B[CurrentMap]) * MAPPINGS_A[CurrentMap];
                 pos.Y = map.Height - pos.Y;
                 g.FillEllipse(brush, pos.X - r, pos.Y - r, r * 2, r * 2);
@@ -142,6 +178,8 @@ namespace G2D_Monitor.Plugins
             Suspects.Clear();
             Ducks.Clear();
             Deads.Clear();
+            PelicanSuspects.Clear();
+            KillerSuspects.Clear();
         }
     }
 }

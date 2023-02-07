@@ -1,5 +1,6 @@
 ﻿using G2D_Monitor.Manager;
 using G2D_Monitor.Plugins.Common;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace G2D_Monitor.Plugins
 {
@@ -110,7 +111,7 @@ namespace G2D_Monitor.Plugins
                     LastCaptureTime = time;
                     time -= CurrentRoundStartTime;
                     ProgressStatusLabel.Text = $"{Enum.GetName(state)}: {ToSecondText(time)}";
-                    foreach (var plugin in FramePlugins) plugin.AddNewFrame(context, time);
+                    foreach (var plugin in FramePlugins) plugin.RoundBegin(context, time);
                 }
                 if (LastState != state)
                 {
@@ -130,18 +131,11 @@ namespace G2D_Monitor.Plugins
                 else if (!NewRound)
                 {
                     NewRound = true;
-                    foreach (var plugin in FramePlugins) plugin.AddNewRound();
+                    foreach (var plugin in FramePlugins) plugin.RoundEnd();
                 }
                 ProgressStatusLabel.Text = Enum.GetName(state);
                 LastState = state;
             }
-        }
-
-        private void AddNewFrame(Context context, long time)
-        {
-            var frame = GetFrame(context, time);
-            CurrentRoundFrames?.Add(frame);
-            if (AlwaysShowNewestFrame && IsTabActive) ShowImage(frame);
         }
 
         private void NewGame()
@@ -153,7 +147,15 @@ namespace G2D_Monitor.Plugins
             OnGameEnding();
         }
 
-        private void AddNewRound()
+        private void RoundBegin(Context context, long time)
+        {
+            FrameBar.Enabled = false;
+            var frame = GetFrame(context, time);
+            CurrentRoundFrames?.Add(frame);
+            if (AlwaysShowNewestFrame && IsTabActive) ShowImage(frame);
+        }
+
+        private void RoundEnd()
         {
             if (CurrentRoundFrames == null) return;
             int num;
