@@ -48,7 +48,7 @@ namespace G2D_Monitor.Plugins
                         FramePlugin.FrameUpdate(context);
                     }
                 });
-                Thread.Sleep(10);
+                Thread.Sleep(5);
             } 
             catch { }
         }

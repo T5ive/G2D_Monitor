@@ -77,11 +77,10 @@ namespace G2D_Monitor.Plugins
             var list = new List<Unit>();
             foreach (var player in context.Players)
             {
-                if (!player.Active) break;
-                list.Add(new(player.ActorNumber, 
+                if (player.Active) list.Add(new(player.ActorNumber,
                     GetOrAdd(Suspects, player.ActorNumber, () => player.HasKilledThisRound), 
                     GetOrAdd(Ducks, player.ActorNumber, () => player.IsInvisible || player.InTelepathic || player.IsMorphed), 
-                    GetOrAdd(Deads, player.ActorNumber, () => player.IsGhost),
+                    GetOrAdd(Deads, player.ActorNumber, () => player.IsGhost), player.IsInPelican,
                     player.Nickname, player.Position));
             }
             return new MapFrame(time, new(context.DeadPlayersCount, list));
@@ -112,7 +111,7 @@ namespace G2D_Monitor.Plugins
             g.DrawString($"Dead: {uc.DeadNum}", META_FONT, META_FORE_BRASH, META_OFFSET + META_FONT_OFFSET, META_OFFSET + META_FONT_OFFSET);
             foreach (var unit in uc)
             {
-                if (unit.Dead) continue;
+                if (unit.Dead || unit.IsInPelican) continue;
                 var brush = unit.IsDuck ? _bDuck : (unit.IsSuspect ? _bSuspect : _bGoose);
                 var pos = (unit.Position + MAPPINGS_B[CurrentMap]) * MAPPINGS_A[CurrentMap];
                 pos.Y = map.Height - pos.Y;
