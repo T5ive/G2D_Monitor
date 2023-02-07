@@ -33,7 +33,7 @@ Using original functions of il2cpp library to get the memory addresses.
 
 Supporting multiboxing.
 
-Collecting and analyzing the player information including 'IsInvisible', 'InTelepathic', 'IsMorphed', etc. to help users determine the identity of others player.
+Collecting and analyzing the player information including 'IsInvisible', 'InTelepathic', 'IsMorphed', etc. to help users determine the identity of other players.
 
 Display some key attributes like DeadNum, RoomId, CurrentMap, CurrentProgress, etc.
 
