@@ -21,8 +21,8 @@
 
 ---
 
-#Goose Goose Duck Assistant Tool
-**Disclaimer: **The author reserves the right not to be responsible for any consequence of using the codes.
+# Goose Goose Duck Assistant Tool
+**Disclaimer**: The author reserves the right not to be responsible for any consequence of using the codes.
 
 Only support 64-bit game process.
 
