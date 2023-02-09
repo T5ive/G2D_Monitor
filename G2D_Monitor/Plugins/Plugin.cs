@@ -44,26 +44,12 @@ namespace G2D_Monitor.Plugins
                     }
                     else
                     {
-                        foreach (var plugin in Plugins) plugin.DoUpdate(context);
-                        FramePlugin.FrameUpdate(context);
+                        foreach (var plugin in Plugins) plugin.OnUpdate(context);
                     }
                 });
                 Thread.Sleep(5);
             } 
             catch { }
-        }
-
-        protected static ListView NewListView()
-        {
-            var listView = new ListView();
-            listView.Dock = DockStyle.Fill;
-            listView.FullRowSelect = true;
-            listView.GridLines = true;
-            listView.UseCompatibleStateImageBehavior = false;
-            listView.View = View.Details;
-            listView.Columns.Add("Key", 200);
-            listView.Columns.Add("Value", 540);
-            return listView;
         }
 
         private TabPage? bindedTab = null;
@@ -78,7 +64,7 @@ namespace G2D_Monitor.Plugins
 
         protected virtual void Activate() { }
 
-        protected virtual void DoUpdate(Context context) { }
+        protected virtual void OnUpdate(Context context) { }
 
         protected virtual void OnGameExit() { }
 

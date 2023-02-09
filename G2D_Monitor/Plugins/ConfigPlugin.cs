@@ -5,6 +5,8 @@ namespace G2D_Monitor.Plugins
 {
     internal sealed class ConfigPlugin : Plugin
     {
+        public static int Width { get => Settings.Default.Width; set { if (value >= MainForm.Instance.MinimumSize.Width) MainForm.Instance.Width = Settings.Default.Width = value; } }
+        public static int Height { get => Settings.Default.Height; set { if (value >= MainForm.Instance.MinimumSize.Height) MainForm.Instance.Height = Settings.Default.Height = value; } }
         public static bool TopMost { get => Settings.Default.TopMost; set { MainForm.Instance.TopMost = Settings.Default.TopMost = value; } }
 
         protected override string Name => "Settings";

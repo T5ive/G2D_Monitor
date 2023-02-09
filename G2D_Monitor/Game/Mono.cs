@@ -19,6 +19,7 @@ namespace G2D_Monitor.Game
         {
             this.hProc = hProc;
             allocAddr = VirtualAllocEx(hProc, IntPtr.Zero, new IntPtr(1096), MEM_COMMIT, EXECUTE_READ_WRITE);
+            if (allocAddr == IntPtr.Zero) return;
             Memory.Write(hProc, allocAddr, Properties.Resources.g2d);
             if (!(injected = Call(0))) VirtualFreeEx(hProc, allocAddr, IntPtr.Zero, MEM_RELEASE);
         }

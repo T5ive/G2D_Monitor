@@ -33,7 +33,10 @@ namespace G2D_Monitor.Game
             return data;
         }
 
-        public static void Write(HandleRef hProc, IntPtr address, byte[] data) => WriteProcessMemory(hProc, address, data, new IntPtr(data.Length), out _);
+        public static void Write(HandleRef hProc, IntPtr address, byte[] data)
+        {
+            if (address != IntPtr.Zero && data.Length > 0) WriteProcessMemory(hProc, address, data, new IntPtr(data.Length), out _);
+        }
 
         [DllImport("Kernel32.dll", SetLastError = true, CallingConvention = CallingConvention.Winapi)]
         [return: MarshalAs(UnmanagedType.Bool)]

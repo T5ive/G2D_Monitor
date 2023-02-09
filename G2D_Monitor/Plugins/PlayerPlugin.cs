@@ -3,18 +3,32 @@ using System.Reflection;
 
 namespace G2D_Monitor.Plugins
 {
-    internal class PlayerPlugin : Plugin
+    internal sealed class PlayerPlugin : Plugin
     {
-        private readonly ListView MainListView = NewListView();
+        private readonly ListView MainListView;
 
         protected override string Name => "Players";
+
+        private PlayerPlugin()
+        {
+            MainListView = new ListView
+            {
+                Dock = DockStyle.Fill,
+                FullRowSelect = true,
+                GridLines = true,
+                UseCompatibleStateImageBehavior = false,
+                View = View.Details
+            };
+            MainListView.Columns.Add("Key", 200);
+            MainListView.Columns.Add("Value", 540);
+        }
 
         protected override void OnGameExit()
         {
             foreach (ListViewItem item in MainListView.Items) item.SubItems[1].Text = string.Empty;
         }
 
-        protected override void DoUpdate(Context context)
+        protected override void OnUpdate(Context context)
         {
             foreach (ListViewItem item in MainListView.Items)
             {

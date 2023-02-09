@@ -1,4 +1,3 @@
-using G2D_Monitor.Game;
 using G2D_Monitor.Manager;
 using G2D_Monitor.Plugins;
 using System.Diagnostics;
@@ -17,13 +16,15 @@ namespace G2D_Monitor
 
         private void MainForm_Load(object sender, EventArgs e)
         {
+            Width = ConfigPlugin.Width;
+            Height = ConfigPlugin.Height;
             TopMost = ConfigPlugin.TopMost;
-            //Plugin.Register<PlayerPlugin>(); //For Debug Only
+            //Plugin.Register<PlayerPlugin>(); //Debug
             Plugin.Register<MetaPlugin>();
             Plugin.Register<MapPlugin>();
             Plugin.Register<ConfigPlugin>();
             FormClosing += (_, _) => { running = false; Plugin.Close(); };
-            Multiboxing.Click += (_, _) => MutexKiller.Run();
+            ResizeEnd += (_, _) => { ConfigPlugin.Width = Width; ConfigPlugin.Height = Height; };
             new Task(Watch).Start();
         }
 

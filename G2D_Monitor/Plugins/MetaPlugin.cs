@@ -17,7 +17,7 @@ namespace G2D_Monitor.Plugins
 
         protected override void OnGameExit() => Clear();
 
-        protected override void DoUpdate(Context context)
+        protected override void OnUpdate(Context context)
         {
             RomeIdSetter?.Invoke(context.RoomId);
             if (context.State == GameState.InGame)

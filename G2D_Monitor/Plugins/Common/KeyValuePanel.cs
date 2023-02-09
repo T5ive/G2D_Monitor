@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace G2D_Monitor.Plugins.Common
+﻿namespace G2D_Monitor.Plugins.Common
 {
     internal class KeyValuePanel
     {
@@ -174,7 +172,6 @@ namespace G2D_Monitor.Plugins.Common
             var l = control.Left;
             left -= control.Left;
             if (left != 0) control.Margin = new(control.Margin.Left + left, control.Margin.Top, control.Margin.Right, control.Margin.Bottom);
-            Debug.WriteLine($"{l} => {control.Left}");
         }
     }
 }

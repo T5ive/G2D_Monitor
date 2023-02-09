@@ -1,13 +1,185 @@
 ﻿using G2D_Monitor.Manager;
-using G2D_Monitor.Plugins.Common;
 using G2D_Monitor.Properties;
 using System.Drawing.Text;
 using System.Numerics;
 
 namespace G2D_Monitor.Plugins
 {
-    internal sealed class MapPlugin : FramePlugin
+    internal class MapPlugin : Plugin
     {
+        private readonly PictureBox FramePanel = new();
+        private readonly ContextMenuStrip PanelMenu = new(MainForm.Instance.components);
+        private readonly ToolStripStatusLabel ProgressStatusLabel = NewStatusLabel(148);
+        private readonly ToolStripStatusLabel FrameStatusLabel = NewStatusLabel();
+
+        private readonly List<List<Frame>> AllFrames = new();
+        private int SelectedRound;
+        private string FrameInfo = string.Empty;
+        private int FrameIndex;
+        private bool MousePressed;
+
+        #region UI Initialization
+
+        protected override string Name => "Map";
+
+        protected override bool UIRequired => true;
+
+        private static ToolStripStatusLabel NewStatusLabel(int width = 0)
+        {
+            var label = new ToolStripStatusLabel();
+            label.TextAlign = ContentAlignment.MiddleLeft;
+            if (width > 0) { label.AutoSize = false; label.Width = width; }
+            else label.AutoSize = true;
+            MainForm.Instance.MainStatusStrip.Items.Add(label);
+            return label;
+        }
+
+        protected override void Initialize(TabPage tab)
+        {
+            ((System.ComponentModel.ISupportInitialize)FramePanel).BeginInit();
+            FramePanel.Dock = DockStyle.Fill;
+            FramePanel.SizeMode = PictureBoxSizeMode.Zoom;
+            FramePanel.TabStop = false;
+            tab.Controls.Add(FramePanel);
+            ((System.ComponentModel.ISupportInitialize)FramePanel).EndInit();
+            FramePanel.MouseWheel += (_, e) => PanelMouseWheel(e);
+            FramePanel.MouseMove += (_, e) => PanelMouseMove(e);
+            FramePanel.MouseDown += (_, _) => MousePressed = true;
+            FramePanel.MouseLeave += (_, _) => MousePressed = false;
+            FramePanel.MouseUp += (_, _) => MousePressed = false;
+        }
+
+        private void SwitchFrame(int index, bool force = false)
+        {
+            if (SelectedRound >= AllFrames.Count || index < 0 || !force && index == FrameIndex) return;
+            var frames = AllFrames[SelectedRound];
+            if (index >= frames.Count) return;
+            var frame = frames[FrameIndex = index];
+            FramePanel.Image = GetImage(frame);
+            FrameStatusLabel.Text = string.Format(FrameInfo, ToSecondText(frame.Time), index + 1);
+        }
+
+        private void PanelMouseWheel(MouseEventArgs e) => SwitchFrame(e.Delta > 0 ? FrameIndex + 1 : FrameIndex - 1);
+
+        private void PanelMouseMove(MouseEventArgs e)
+        {
+            if (MousePressed)
+            {
+                if (SelectedRound >= AllFrames.Count) { MousePressed = false; return; }
+                var max = AllFrames[SelectedRound].Count;
+                var index = (int)Math.Round((e.X + 0.0) / FramePanel.Width * max);
+                if (index < 0) index = 0;
+                else if (index >= max) index = max - 1;
+                SwitchFrame(index);
+            }
+        }
+
+        #endregion
+
+        #region Recoding
+
+        private const float MIN_INTERVAL = 1000f / 10;
+        private const int FIRST_ROUND_LOADING_TIME = 10000;
+        private const int OTHER_ROUND_LOADING_TIME = 1000;
+
+        private GameState LastState = GameState.Unknown;
+        private long LastCaptureTime;
+        private bool FirstRound = true;
+        private long RecodingStartTime;
+        private List<Frame>? RecodingFrames;
+
+        protected override void OnUpdate(Context context)
+        {
+            var state = context.State;
+            if (state == GameState.InGame)
+            {
+                var time = Environment.TickCount64;
+                if (RecodingFrames == null)
+                {
+                    LastCaptureTime = time;
+                    RecodingStartTime = time + (FirstRound ? FIRST_ROUND_LOADING_TIME : OTHER_ROUND_LOADING_TIME);
+                    RecodingFrames = new();
+                    MousePressed = false;
+                }
+                else if (time >= RecodingStartTime && time - LastCaptureTime >= MIN_INTERVAL)
+                {
+                    LastCaptureTime = time;
+                    time -= RecodingStartTime;
+                    ProgressStatusLabel.Text = $"{Enum.GetName(state)}: {ToSecondText(time)}";
+
+                    var frame = GetFrame(context, time);
+                    RecodingFrames.Add(frame);
+                    //todo: No need to consider 'MousePressed'
+                    FramePanel.Image = GetImage(frame); 
+                }
+                if (LastState != state)
+                {
+                    ProgressStatusLabel.Text = Enum.GetName(state);
+                    LastState = state;
+                }
+            }
+            else if (LastState != state)
+            {
+                FirstRound = false;
+                if (state == GameState.InLobby)
+                {
+                    FirstRound = true;
+                    FrameStatusLabel.Text = string.Empty;
+                    //Reset Components
+                    FramePanel.Image = null;
+                    FramePanel.ContextMenuStrip = null;
+                    PanelMenu.Items.Clear();
+                    MousePressed = false;
+                    //Reset Data
+                    AllFrames.Clear();
+                    OnGameEnding();
+                }
+                else if (RecodingFrames != null)
+                {
+                    int num;
+                    AllFrames.Add(RecodingFrames);
+                    RecodingFrames = null;
+                    num = AllFrames.Count;
+                    var item = new ToolStripMenuItem("Round " + num);
+                    item.Tag = num - 1;
+                    item.Click += RoundItemClick;
+                    PanelMenu.Items.Add(item);
+                    FramePanel.ContextMenuStrip = PanelMenu;
+                    SelectRound(item, true);
+                }
+                ProgressStatusLabel.Text = Enum.GetName(state);
+                LastState = state;
+            }
+        }
+
+        private void RoundItemClick(object? sender, EventArgs e)
+        {
+            if (sender is ToolStripMenuItem item) SelectRound(item);
+        }
+
+        private void SelectRound(ToolStripMenuItem item, bool force = false)
+        {
+            var idx = (int)item.Tag;
+            if (idx >= AllFrames.Count || !force && SelectedRound == idx) return;
+            MousePressed = false;
+            var frames = AllFrames[SelectedRound = idx];
+            foreach (ToolStripMenuItem subItem in item.Owner.Items) subItem.Checked = item == subItem;
+            var fps = Math.Round(frames.Count * 1000.0 / frames[^1].Time, 1);
+            FrameInfo = "FPS: " + fps + ", Time: {0:F3} / " + ToSecondText(frames[^1].Time) + ", Frame: {1} / " + frames.Count;
+            SwitchFrame(frames.Count - 1, true);
+        }
+
+        protected override void OnGameExit() => OnGameEnding();
+
+        protected override void OnClosing() => OnGameEnding();
+
+        private static string ToSecondText(long ms) => (ms / 1000.0).ToString("f3") + 's';
+
+        #endregion
+
+        #region Frame Computing
+
+        private const string DEAD_TEXT = "Dead: ";
         private const int META_OFFSET = 12;
         private const int META_FONT_OFFSET = 4;
         private const int META_HEIGHT = 44;
@@ -55,27 +227,21 @@ namespace G2D_Monitor.Plugins
             new Vector2(11.51932f, 11.565213f)
         };
 
-        protected override string Name => "Map";
-
-        protected override bool AlwaysShowNewestFrame => true;
-
-        protected override bool AlwaysDisposeLastImage => false;
-
         //黑天鹅 Space 3  鹅教堂 Victorian 0
         //沙漠 Desert 8  地下室 Vitorian 7
         //丛林 Jungle 6 马拉德 Victorian 1
         //殖民地 Space 2 飞船 Space 4
         //休息室 Lounge 5
 
-        private readonly HashSet<int> Suspects = new ();
-        private readonly HashSet<int> Ducks = new ();
-        private readonly HashSet<int> Deads = new ();
-        private readonly HashSet<int> InPelican = new ();
+        private readonly HashSet<int> Suspects = new();
+        private readonly HashSet<int> Ducks = new();
+        private readonly HashSet<int> Deads = new();
+        private readonly HashSet<int> InPelican = new();
 
         private int CurrentMap;
         private Image? LoadedMapImage;
 
-        protected override IFrame GetFrame(Context context, long time)
+        private Frame GetFrame(Context context, long time)
         {
             if (int.TryParse(context.RoomMap, out var v) && v >= 0 && v < 9) CurrentMap = v;
             var list = new List<Unit>();
@@ -85,8 +251,11 @@ namespace G2D_Monitor.Plugins
             {
                 if (player.Active)
                 {
-                    if (player.IsGhost && !Deads.Contains(player.ActorNumber)) victimsFromKiller.Add(player);
-                    else if (player.IsInPelican && !InPelican.Contains(player.ActorNumber)) { InPelican.Add(player.ActorNumber); victimsFromPelican.Add(player); }
+                    if (context.State == GameState.InGame && time > 15000)
+                    {
+                        if (player.IsGhost && !Deads.Contains(player.ActorNumber)) victimsFromKiller.Add(player);
+                        else if (player.IsInPelican && !InPelican.Contains(player.ActorNumber)) { InPelican.Add(player.ActorNumber); victimsFromPelican.Add(player); }
+                    }
                     list.Add(new(player.ActorNumber,
                     GetOrAdd(Suspects, player.ActorNumber, () => player.HasKilledThisRound),
                     GetOrAdd(Ducks, player.ActorNumber, () => player.IsInvisible || player.InTelepathic || player.IsMorphed),
@@ -96,7 +265,7 @@ namespace G2D_Monitor.Plugins
             }
             GetNearestPlayer(victimsFromKiller, context.Players, KillerSuspects);
             GetNearestPlayer(victimsFromPelican, context.Players, PelicanSuspects);
-            return new MapFrame(time, new(context.DeadPlayersCount, list));
+            return new Frame(time, new(context.DeadPlayersCount, list));
         }
 
         private static void GetNearestPlayer(List<Player> victims, ICollection<Player> players, Dictionary<int, string> resultMap)
@@ -129,7 +298,7 @@ namespace G2D_Monitor.Plugins
             return true;
         }
 
-        protected override Image? GetImage(IFrame frame)
+        private Image? GetImage(Frame frame)
         {
             var map = GetMapImage();
             if (map == null) return null;
@@ -139,15 +308,15 @@ namespace G2D_Monitor.Plugins
                 LoadedMapImage = new Bitmap(map.Width, map.Height);
             }
             var r = Radius;
-            var uc = ((MapFrame)frame).Units;
+            var uc = frame.Data;
             using var g = Graphics.FromImage(LoadedMapImage);
             g.DrawImage(map, 0, 0);
             g.FillRectangle(META_BACK_BRASH, META_OFFSET, META_OFFSET, META_FONT_SIZE * 6, META_HEIGHT);
-            g.DrawString($"Dead: {uc.DeadNum}", META_FONT, META_FORE_BRASH, META_OFFSET + META_FONT_OFFSET, META_OFFSET + META_FONT_OFFSET);
-            foreach (var unit in uc)
+            g.DrawString(DEAD_TEXT + uc.DeadNum, META_FONT, META_FORE_BRASH, META_OFFSET + META_FONT_OFFSET, META_OFFSET + META_FONT_OFFSET);
+            foreach (var unit in uc.Units)
             {
-                if (unit.Dead || unit.IsInPelican) continue;
-                var brush = unit.IsDuck ? _bDuck : (unit.IsSuspect || PelicanSuspects.ContainsKey(unit.Id) || 
+                if (unit.Dead || unit.IsInPelican || string.IsNullOrEmpty(unit.Nickname)) continue;
+                var brush = unit.IsDuck ? _bDuck : (unit.IsSuspect || PelicanSuspects.ContainsKey(unit.Id) ||
                     KillerSuspects.ContainsKey(unit.Id) ? _bSuspect : _bGoose);
                 var pos = (unit.Position + MAPPINGS_B[CurrentMap]) * MAPPINGS_A[CurrentMap];
                 pos.Y = map.Height - pos.Y;
@@ -155,6 +324,15 @@ namespace G2D_Monitor.Plugins
                 g.DrawString(unit.Nickname, _font, brush, pos.X - r, pos.Y + r * 1.5f);
             }
             return LoadedMapImage;
+        }
+
+        private void OnGameEnding()
+        {
+            Suspects.Clear();
+            Ducks.Clear();
+            Deads.Clear();
+            PelicanSuspects.Clear();
+            KillerSuspects.Clear();
         }
 
         private Image? GetMapImage()
@@ -173,13 +351,56 @@ namespace G2D_Monitor.Plugins
             };
         }
 
-        protected override void OnGameEnding()
+        #endregion
+
+        #region Structure
+
+        private readonly struct Frame
         {
-            Suspects.Clear();
-            Ducks.Clear();
-            Deads.Clear();
-            PelicanSuspects.Clear();
-            KillerSuspects.Clear();
+            public readonly long Time;
+            public readonly UnitCollection Data;
+
+            public Frame(long time, UnitCollection data)
+            {
+                Time = time;
+                Data = data;
+            }
         }
+
+        private readonly struct Unit
+        {
+            public readonly int Id;
+            public readonly bool IsSuspect;
+            public readonly bool IsDuck;
+            public readonly bool Dead;
+            public readonly bool IsInPelican;
+            public readonly string Nickname;
+            public readonly Vector2 Position;
+
+            public Unit(int id, bool isSuspect, bool isDuck, bool dead, bool isInPelican, string nickname, Vector2 position)
+            {
+                Id = id;
+                IsSuspect = isSuspect;
+                IsDuck = isDuck;
+                Dead = dead;
+                IsInPelican = isInPelican;
+                Nickname = nickname;
+                Position = position;
+            }
+        }
+
+        private readonly struct UnitCollection
+        {
+            public readonly int DeadNum;
+            public readonly List<Unit> Units;
+
+            public UnitCollection(int deadNum, List<Unit> units)
+            {
+                DeadNum = deadNum;
+                Units = units;
+            }
+        }
+
+        #endregion
     }
 }
