@@ -84,7 +84,6 @@ namespace G2D_Monitor.Plugins
 
         private GameState LastState = GameState.Unknown;
         private long LastCaptureTime;
-        private bool FirstRound = true;
         private long RecodingStartTime;
         private List<Frame>? RecodingFrames;
 
@@ -97,7 +96,7 @@ namespace G2D_Monitor.Plugins
                 if (RecodingFrames == null)
                 {
                     LastCaptureTime = time;
-                    RecodingStartTime = time + (FirstRound ? FIRST_ROUND_LOADING_TIME : OTHER_ROUND_LOADING_TIME);
+                    RecodingStartTime = time + (AllFrames.Count == 0 ? FIRST_ROUND_LOADING_TIME : OTHER_ROUND_LOADING_TIME);
                     RecodingFrames = new();
                     MousePressed = false;
                 }
@@ -120,10 +119,9 @@ namespace G2D_Monitor.Plugins
             }
             else if (LastState != state)
             {
-                FirstRound = false;
                 if (state == GameState.InLobby)
                 {
-                    FirstRound = true;
+                    RecodingFrames = null;
                     FrameStatusLabel.Text = string.Empty;
                     //Reset Components
                     FramePanel.Image = null;

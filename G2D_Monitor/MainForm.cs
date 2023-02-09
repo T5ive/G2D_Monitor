@@ -10,6 +10,7 @@ namespace G2D_Monitor
         public const string PROCESS_NAME = "Goose Goose Duck";
         private const int INIT_PAUSE_TIME = 1000;
         private const int DETECT_GAME_INTERVAL = 100;
+        private const int LOOP_TASK_INTERVAL = 5;
         private volatile bool running = true;
 
         public MainForm() => InitializeComponent();
@@ -41,24 +42,25 @@ namespace G2D_Monitor
                         process.Dispose();
                         process = null;
                         context = null;
-                        Plugin.Update(null);
+                        Plugin.GameExit();
                     }
                     foreach (var proc in Process.GetProcessesByName(PROCESS_NAME))
                     {
                         if (!proc.HasExited)
                         {
                             Thread.Sleep(INIT_PAUSE_TIME);
-                            context = new(process = proc);
+                            process = proc;
                             break;
                         }
                     }
                     if (process == null) Thread.Sleep(DETECT_GAME_INTERVAL);
                 }
-
+                if (process != null && context == null && (context = Context.Build(process)) == null) Thread.Sleep(INIT_PAUSE_TIME);
                 if (context != null)
                 {
                     context.Update();
                     Plugin.Update(context);
+                    Thread.Sleep(LOOP_TASK_INTERVAL);
                 }
             }
             process?.Dispose();

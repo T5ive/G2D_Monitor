@@ -81,6 +81,8 @@ namespace G2D_Monitor.Plugins
             InPelicanSetter?.Invoke(string.Empty);
             InvisibleSetter?.Invoke(string.Empty);
             MorphedSetter?.Invoke(string.Empty);
+            PelicanSuspectsSetter?.Invoke(string.Empty);
+            KillerSuspectsSetter?.Invoke(string.Empty);
             HasKilled.Clear();
             HasBeenInTelepathic.Clear();
             HasBeenInvisible.Clear();

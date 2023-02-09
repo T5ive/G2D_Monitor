@@ -33,19 +33,35 @@ namespace G2D_Monitor.Manager
         private readonly IntPtr addrMain;
         private readonly IntPtr addrLobby;
 
-        public Context(Process process)
+        private Context(Process process, HandleRef hProc, IntPtr addrPlayer, IntPtr addrMain, IntPtr addrLobby)
         {
             GameProcess = process;
-            hProc = new(process, process.Handle);
+            this.hProc = hProc;
+            this.addrPlayer = addrPlayer;
+            this.addrMain = addrMain;
+            this.addrLobby = addrLobby;
             var list = new List<Player>(PLAYER_NUM);
             for (var i = 0; i < PLAYER_NUM; i++) list.Add(new());
             Players = new(list);
+        }
+
+        public static Context? Build(Process process)
+        {
+            var hProc = new HandleRef(process, process.Handle); 
+            IntPtr addrPlayer;
+            IntPtr addrMain = IntPtr.Zero;
+            IntPtr addrLobby = IntPtr.Zero;
             using (var mono = new Mono(hProc))
             {
                 addrPlayer = mono.GetStaticFields(PLAYER_NAME_SPACE, PLAYER_CLASS_NAME);
-                addrMain = mono.GetStaticFields(MAIN_NAME_SPACE, MAIN_CLASS_NAME);
-                addrLobby = mono.GetStaticFields(LOBBY_NAME_SPACE, LOBBY_CLASS_NAME);
+                if (addrPlayer != IntPtr.Zero)
+                {
+                    addrMain = mono.GetStaticFields(MAIN_NAME_SPACE, MAIN_CLASS_NAME);
+                    addrLobby = mono.GetStaticFields(LOBBY_NAME_SPACE, LOBBY_CLASS_NAME);
+                }
             }
+            if (addrPlayer == IntPtr.Zero) return null;
+            return new(process, hProc, addrPlayer, addrMain, addrLobby);
         }
 
         public void Update()

@@ -4,7 +4,6 @@ namespace G2D_Monitor.Plugins
 {
     public abstract class Plugin
     {
-        private static TabPage? CurrentTab = null;
 
         private static readonly List<Plugin> Plugins = new();
 
@@ -18,7 +17,7 @@ namespace G2D_Monitor.Plugins
                 MainForm.Instance.MainTabControl.SuspendLayout();
                 tab.SuspendLayout();
                 MainForm.Instance.MainTabControl.TabPages.Add(tab);
-                plugin.Initialize(plugin.bindedTab = tab);
+                plugin.Initialize(tab);
                 MainForm.Instance.MainTabControl.ResumeLayout(false);
                 tab.ResumeLayout(false);
             }
@@ -31,30 +30,30 @@ namespace G2D_Monitor.Plugins
             foreach (var plugin in Plugins) plugin.OnClosing();
         }
 
-        public static void Update(Context? context)
+        public static void GameExit()
+        {
+            try
+            {
+                MainForm.Instance.Invoke(() =>
+                {
+                    foreach (var plugin in Plugins) plugin.OnGameExit();
+                });
+            }
+            catch { }
+
+        }
+
+        public static void Update(Context context)
         {
             try 
             {
                 MainForm.Instance.Invoke(() =>
                 {
-                    CurrentTab = MainForm.Instance.MainTabControl.SelectedTab;
-                    if (context == null)
-                    {
-                        foreach (var plugin in Plugins) plugin.OnGameExit();
-                    }
-                    else
-                    {
-                        foreach (var plugin in Plugins) plugin.OnUpdate(context);
-                    }
+                    foreach (var plugin in Plugins) plugin.OnUpdate(context);
                 });
-                Thread.Sleep(5);
             } 
             catch { }
         }
-
-        private TabPage? bindedTab = null;
-
-        protected bool IsTabActive => bindedTab == CurrentTab;
 
         protected virtual bool UIRequired => true;
 
