@@ -18,7 +18,7 @@ namespace G2D_Monitor.Game
         public Mono(HandleRef hProc)
         {
             this.hProc = hProc;
-            allocAddr = VirtualAllocEx(hProc, IntPtr.Zero, new IntPtr(1096), MEM_COMMIT, EXECUTE_READ_WRITE);
+            allocAddr = VirtualAllocEx(hProc, IntPtr.Zero, new IntPtr(1096), MEM_COMMIT, EXECUTE_READ_WRITE); // Memory alloc returns error 5 (Access Denied) even when launched with admin right so assistant tool not works anymore
             if (allocAddr == IntPtr.Zero) return;
             Memory.Write(hProc, allocAddr, Properties.Resources.g2d);
             if (!(injected = Call(0))) VirtualFreeEx(hProc, allocAddr, IntPtr.Zero, MEM_RELEASE);
